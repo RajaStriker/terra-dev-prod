@@ -1,113 +1,78 @@
 pipeline {
-    agent any
-
+    agent {
+        label 'my-laptop'  // Make sure this matches the label assigned to your Jenkins node
+    }
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('c8f19f80-4420-44f1-bf6c-0bb6038ac477')
-        AWS_SECRET_ACCESS_KEY = credentials('50366b85-078e-4b4e-a9b1-8b31a116e884')
-        AWS_SESSION_TOKEN     = credentials('52876e70-6684-47f4-b834-9657d1dfce58')
-        GIT_CREDENTIALS       = credentials('github-credentials-id')
-        PATH                  = "/usr/bin:${env.PATH}"
+        // Update environment variables with your AWS credentials
+        AWS_ACCESS_KEY_ID = 'c8f19f80-4420-44f1-bf6c-0bb6038ac477'
+        AWS_SECRET_ACCESS_KEY = '50366b85-078e-4b4e-a9b1-8b31a116e884'
+        AWS_SESSION_TOKEN = '52876e70-6684-47f4-b834-9657d1dfce58'
+        TERRAFORM_VERSION = '1.3.7'  // Specify the Terraform version if needed
     }
-
-    parameters {
-        choice(name: 'ENV', choices: ['dev', 'prod'], description: 'Choose the environment to deploy')
-    }
-
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git credentialsId: 'github-credentials-id', url: 'https://github.com/RajaStriker/terra-dev-prod.git'
+                // Checkout code from the repository
+                git url: 'https://github.com/RajaStriker/terra-dev-prod.git', branch: 'main', credentialsId: 'github-credentials-id'
             }
         }
-
         stage('Build Angular App') {
             steps {
                 script {
+                    // Change directory to Angular app
                     dir('angular-app') {
                         // Install dependencies
                         sh 'npm install'
-
-                        // Build Angular project
+                        // Build the Angular application
                         sh 'ng build --prod'
                     }
                 }
             }
         }
-
-        stage('Terraform Init') {
+        stage('Terraform Plan and Apply') {
             steps {
                 script {
-                    if (params.ENV == 'dev') {
-                        dir('terraform/dev') {
-                            sh 'terraform init'
-                        }
-                    } else if (params.ENV == 'prod') {
-                        dir('terraform/prod') {
-                            sh 'terraform init'
-                        }
+                    // Initialize Terraform for dev environment
+                    dir('terraform/dev') {
+                        sh 'terraform init'
+                        sh 'terraform plan'
+                        // Manual approval for dev environment
+                        input message: 'Approve changes for DEV environment?', ok: 'Apply'
+                        sh 'terraform apply -auto-approve'
                     }
                 }
             }
         }
-
-        stage('Manual Approval for Dev') {
+        stage('Terraform Plan and Apply Prod') {
             when {
-                expression { params.ENV == 'dev' }
+                branch 'main'
             }
             steps {
                 script {
-                    input message: "Manual approval required to proceed with Terraform Apply in the dev environment. Do you want to continue?", 
-                          ok: "Proceed"
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    if (params.ENV == 'dev') {
-                        dir('terraform/dev') {
-                            sh 'terraform apply -auto-approve'
-                        }
-                    } else if (params.ENV == 'prod') {
-                        dir('terraform/prod') {
-                            sh 'terraform apply -auto-approve'
-                        }
+                    // Initialize Terraform for prod environment
+                    dir('terraform/prod') {
+                        sh 'terraform init'
+                        sh 'terraform plan'
+                        sh 'terraform apply -auto-approve'
                     }
                 }
             }
         }
-
-        stage('Deploy to S3') {
+        stage('Upload Angular App to S3') {
             steps {
                 script {
-                    def s3Bucket = (params.ENV == 'dev') ? 'your-dev-bucket-name' : 'your-prod-bucket-name'
-
-                    dir('angular-app/dist/your-angular-app') {
-                        sh """
-                        aws s3 sync . s3://${s3Bucket} --acl public-read
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Configure S3 Website Hosting') {
-            steps {
-                script {
-                    def s3Bucket = (params.ENV == 'dev') ? 'your-dev-bucket-name' : 'your-prod-bucket-name'
-
-                    sh """
-                    aws s3 website s3://${s3Bucket}/ --index-document index.html --error-document error.html
-                    """
+                    // Upload the Angular build to S3 bucket
+                    sh 'aws s3 sync angular-app/dist/ s3://striker-dev --delete'
                 }
             }
         }
     }
-
     post {
-        always {
-            cleanWs()
+        success {
+            echo 'Build and deployment completed successfully.'
+        }
+        failure {
+            echo 'Build or deployment failed.'
         }
     }
 }
