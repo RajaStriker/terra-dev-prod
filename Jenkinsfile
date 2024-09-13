@@ -20,10 +20,10 @@ pipeline {
             }
         }
 
-        stage('Angular Build') {
+        stage('Build Angular App') {
             steps {
                 script {
-                    dir('angular-app') {  // Change 'angular-app' to your actual Angular project directory
+                    dir('angular-app') {
                         // Install dependencies
                         sh 'npm install'
 
@@ -81,11 +81,9 @@ pipeline {
         stage('Deploy to S3') {
             steps {
                 script {
-                    // Define the S3 bucket based on the environment
                     def s3Bucket = (params.ENV == 'dev') ? 'your-dev-bucket-name' : 'your-prod-bucket-name'
 
-                    // Sync the Angular build files to the S3 bucket
-                    dir('angular-app/dist/your-angular-app') {  // Change 'your-angular-app' to your Angular build folder name
+                    dir('angular-app/dist/your-angular-app') {
                         sh """
                         aws s3 sync . s3://${s3Bucket} --acl public-read
                         """
@@ -99,7 +97,6 @@ pipeline {
                 script {
                     def s3Bucket = (params.ENV == 'dev') ? 'your-dev-bucket-name' : 'your-prod-bucket-name'
 
-                    // Configure S3 for static website hosting using AWS CLI
                     sh """
                     aws s3 website s3://${s3Bucket}/ --index-document index.html --error-document error.html
                     """
