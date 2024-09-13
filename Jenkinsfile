@@ -3,8 +3,9 @@ pipeline {
 
     environment {
         // Using Jenkins credentials for AWS and GitHub
-        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_ACCESS_KEY_ID     = credentials('c8f19f80-4420-44f1-bf6c-0bb6038ac477')
+        AWS_SECRET_ACCESS_KEY = credentials('50366b85-078e-4b4e-a9b1-8b31a116e884')
+        AWS_SESSION_TOKEN     = credentials('52876e70-6684-47f4-b834-9657d1dfce58')
         GIT_CREDENTIALS       = credentials('github-credentials-id')
     }
 
