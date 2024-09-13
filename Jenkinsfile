@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'my-laptop'  // Make sure this matches the label assigned to your Jenkins node
+        label 'striker'  // Make sure this matches the label assigned to your Jenkins node
     }
     environment {
         // Update environment variables with your AWS credentials
